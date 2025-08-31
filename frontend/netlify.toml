@@ -1,0 +1,21 @@
+[build]
+  command = "npm run build"
+  publish = "build"
+
+[build.environment]
+  NODE_VERSION = "18"
+  NPM_VERSION = "9"
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
+
+[context.production.environment]
+  REACT_APP_API_URL = "https://your-backend-url.com"
+
+[context.deploy-preview.environment]
+  REACT_APP_API_URL = "https://your-backend-url.com"
+
+[context.branch-deploy.environment]
+  REACT_APP_API_URL = "https://your-backend-url.com"
