@@ -13,7 +13,9 @@ const api = axios.create({
 // Request interceptor for logging and error handling
 api.interceptors.request.use(
   (config) => {
-    console.log(`API Request: ${config.method?.toUpperCase()} ${config.url}`);
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`API Request: ${config.method?.toUpperCase()} ${config.url}`);
+    }
     return config;
   },
   (error) => {
@@ -25,7 +27,9 @@ api.interceptors.request.use(
 // Response interceptor for error handling
 api.interceptors.response.use(
   (response) => {
-    console.log(`API Response: ${response.status} ${response.config.url}`);
+    if (process.env.NODE_ENV === 'development') {
+      console.log(`API Response: ${response.status} ${response.config.url}`);
+    }
     return response;
   },
   (error) => {
@@ -49,6 +53,9 @@ api.interceptors.response.use(
         case 500:
           console.error('Internal Server Error:', data);
           break;
+        case 503:
+          console.error('Service Unavailable:', data);
+          break;
         default:
           console.error(`HTTP ${status}:`, data);
       }
@@ -64,13 +71,29 @@ api.interceptors.response.use(
   }
 );
 
+// Retry logic for failed requests
+const retryRequest = async (fn, retries = config.api.retryAttempts) => {
+  try {
+    return await fn();
+  } catch (error) {
+    if (retries > 0 && (error.code === 'ECONNABORTED' || error.message.includes('timeout'))) {
+      console.log(`Retrying request... (${retries} attempts left)`);
+      await new Promise(resolve => setTimeout(resolve, 1000)); // Wait 1 second
+      return retryRequest(fn, retries - 1);
+    }
+    throw error;
+  }
+};
+
 // API service methods
 export const apiService = {
   // Get all listings
   async getListings(limit = null) {
     try {
       const params = limit ? { limit } : {};
-      const response = await api.get(config.api.endpoints.listings, { params });
+      const response = await retryRequest(() => 
+        api.get(config.api.endpoints.listings, { params })
+      );
       return response.data;
     } catch (error) {
       throw new Error(`Failed to fetch listings: ${error.message}`);
@@ -80,7 +103,9 @@ export const apiService = {
   // Get listings by type
   async getListingsByType(type) {
     try {
-      const response = await api.get(`${config.api.endpoints.types}/${type}`);
+      const response = await retryRequest(() => 
+        api.get(`${config.api.endpoints.types}/${type}`)
+      );
       return response.data;
     } catch (error) {
       throw new Error(`Failed to fetch ${type} listings: ${error.message}`);
@@ -90,7 +115,9 @@ export const apiService = {
   // Search listings with natural language query
   async searchListings(query) {
     try {
-      const response = await api.post(config.api.endpoints.search, { query });
+      const response = await retryRequest(() => 
+        api.post(config.api.endpoints.search, { query })
+      );
       return response.data;
     } catch (error) {
       throw new Error(`Search failed: ${error.message}`);
@@ -100,7 +127,9 @@ export const apiService = {
   // Get listing details
   async getListingDetails(listingId) {
     try {
-      const response = await api.get(`/api/listings/detail/${listingId}`);
+      const response = await retryRequest(() => 
+        api.get(`/api/listings/detail/${listingId}`)
+      );
       return response.data;
     } catch (error) {
       throw new Error(`Failed to fetch listing details: ${error.message}`);
@@ -110,7 +139,9 @@ export const apiService = {
   // Get statistics
   async getStats() {
     try {
-      const response = await api.get(config.api.endpoints.stats);
+      const response = await retryRequest(() => 
+        api.get(config.api.endpoints.stats)
+      );
       return response.data;
     } catch (error) {
       throw new Error(`Failed to fetch stats: ${error.message}`);
@@ -120,16 +151,63 @@ export const apiService = {
   // Health check
   async healthCheck() {
     try {
-      const response = await api.get('/');
+      const response = await retryRequest(() => 
+        api.get(config.api.endpoints.health)
+      );
       return response.data;
     } catch (error) {
       throw new Error(`Health check failed: ${error.message}`);
+    }
+  },
+
+  // Get home page data (featured listings + stats)
+  async getHomeData() {
+    try {
+      const response = await retryRequest(() => 
+        api.get('/')
+      );
+      return response.data;
+    } catch (error) {
+      console.error('Error fetching home data:', error);
+      throw error;
+    }
+  },
+
+  // Get featured listings
+  async getFeaturedListings() {
+    try {
+      const response = await retryRequest(() => 
+        api.get(config.api.endpoints.featured)
+      );
+      return response.data;
+    } catch (error) {
+      throw new Error(`Failed to fetch featured listings: ${error.message}`);
+    }
+  },
+
+  // Test backend connectivity
+  async testConnection() {
+    try {
+      const response = await api.get('/', { timeout: 5000 });
+      return {
+        connected: true,
+        status: response.status,
+        data: response.data
+      };
+    } catch (error) {
+      return {
+        connected: false,
+        error: error.message,
+        code: error.code
+      };
     }
   }
 };
 
 // Utility functions
 export const formatPrice = (price) => {
+  if (!price || price === 0) return 'Price on request';
+  
   if (price >= 1000000) {
     return `$${(price / 1000000).toFixed(1)}M`;
   } else if (price >= 1000) {
@@ -139,6 +217,7 @@ export const formatPrice = (price) => {
 };
 
 export const formatLocation = (location) => {
+  if (!location) return 'Location not specified';
   return location.replace(', NS', '').trim();
 };
 
@@ -153,16 +232,8 @@ export const getPropertyTypeLabel = (type) => {
 };
 
 export const getPropertyTypeColor = (type) => {
-  switch (type) {
-    case 'house':
-      return 'blue';
-    case 'condo':
-      return 'green';
-    case 'land':
-      return 'yellow';
-    default:
-      return 'gray';
-  }
+  const typeConfig = config.propertyTypes.find(t => t.id === type);
+  return typeConfig ? typeConfig.color : 'gray';
 };
 
 // Error handling utilities
@@ -182,19 +253,26 @@ export const handleApiError = (error) => {
         return config.errors.noResults;
       case 500:
         return config.errors.apiError;
+      case 503:
+        return config.errors.backendUnavailable;
       default:
         return config.errors.apiError;
     }
   } else if (error.request) {
     // Network error
+    if (error.code === 'ECONNABORTED') {
+      return config.errors.timeoutError;
+    }
     return config.errors.networkError;
+  } else if (error.message && error.message.includes('CORS')) {
+    return config.errors.corsError;
   } else {
     // Other error
     return error.message || config.errors.apiError;
   }
 };
 
-// Local storage utilities
+// Local storage utilities with better error handling
 export const storage = {
   get(key) {
     try {
@@ -233,6 +311,63 @@ export const storage = {
     } catch (error) {
       console.error('Error clearing localStorage:', error);
       return false;
+    }
+  },
+
+  // Cache management
+  getCache(key) {
+    try {
+      const cached = this.get(key);
+      if (!cached) return null;
+      
+      // Check if cache is expired
+      if (cached.expiry && Date.now() > cached.expiry) {
+        this.remove(key);
+        return null;
+      }
+      
+      return cached.data;
+    } catch (error) {
+      console.error('Error reading cache:', error);
+      return null;
+    }
+  },
+
+  setCache(key, data, expiryHours = config.production.cacheExpiryHours) {
+    try {
+      const cacheData = {
+        data,
+        expiry: Date.now() + (expiryHours * 60 * 60 * 1000),
+        timestamp: Date.now()
+      };
+      this.set(key, cacheData);
+      return true;
+    } catch (error) {
+      console.error('Error setting cache:', error);
+      return false;
+    }
+  },
+
+  clearExpiredCache() {
+    try {
+      const keys = Object.keys(localStorage);
+      const now = Date.now();
+      
+      keys.forEach(key => {
+        if (key.startsWith('ai-realtor-cache-')) {
+          try {
+            const cached = JSON.parse(localStorage.getItem(key));
+            if (cached.expiry && now > cached.expiry) {
+              localStorage.removeItem(key);
+            }
+          } catch (e) {
+            // Remove invalid cache entries
+            localStorage.removeItem(key);
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Error clearing expired cache:', error);
     }
   }
 };

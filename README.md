@@ -1,209 +1,239 @@
-# AI Realtor Assistant Website
+# 🏠 AI House Buying Assistant
 
-A full-stack real estate application with AI-powered natural language search capabilities.
+An intelligent real estate search platform powered by ChatGPT that helps users find their dream properties using natural language queries.
 
-## 🏗️ Project Structure
+## ✨ Features
 
-```
-AI Realtor Porject/
-├── frontend/                 # React + TailwindCSS frontend
-│   ├── src/
-│   ├── public/
-│   └── package.json
-├── backend/                  # Flask API backend
-│   ├── app.py
-│   ├── database.py
-│   ├── ai_filter.py
-│   └── requirements.txt
-├── database/                 # Mock database files
-│   └── listings.db
-└── README.md
-```
+- **🤖 AI-Powered Search**: Natural language property search using ChatGPT
+- **🏘️ Smart Filtering**: Intelligent property matching based on user preferences
+- **📱 Responsive Design**: Beautiful, mobile-first interface
+- **🔍 Advanced Filters**: Property type, location, price, features, and categories
+- **💡 Smart Suggestions**: AI-generated search suggestions and explanations
+- **⚡ Instant Results**: Fast, local filtering with ChatGPT enhancement
+- **🌐 Netlify Hosted**: Deployed and ready to use
 
-## 🚀 Features
+## 🚀 Live Demo
 
-- **Property Listings**: Browse houses, condos, and land
-- **AI Search**: Natural language queries (e.g., "affordable condos in Halifax under $500,000")
-- **Smart Filtering**: AI-powered query interpretation and database filtering
-- **Responsive Design**: Modern UI with TailwindCSS
-- **RESTful API**: Flask backend with search endpoints
+**Visit the live application**: [https://ai-realtor-assistant.netlify.app](https://ai-realtor-assistant.netlify.app)
 
-## 🛠️ Tech Stack
+## 🛠️ Technology Stack
 
-- **Frontend**: React 18, TailwindCSS, Axios
-- **Backend**: Flask, SQLite, OpenAI GPT API
-- **Deployment**: Netlify (frontend), JupyterHub (backend)
+- **Frontend**: React 18 + TailwindCSS
+- **AI Integration**: ChatGPT API via Netlify Functions
+- **Deployment**: Netlify
+- **Data**: Local JSON database with 20+ properties
+- **Search**: Smart filtering with natural language processing
 
 ## 📋 Prerequisites
 
-- Node.js 18+ and npm
-- Python 3.8+
-- OpenAI API key (for AI filtering)
+- Node.js 16+ 
+- npm or yarn
+- Netlify account (for deployment)
+- OpenAI API key (for ChatGPT integration)
 
 ## 🚀 Quick Start
 
-### Backend Setup (JupyterHub)
+### 1. Clone the Repository
 
-1. Navigate to backend directory:
-   ```bash
-   cd backend
-   ```
+```bash
+git clone https://github.com/TushantKaura1/ai-house-buying-assistant.git
+cd ai-house-buying-assistant
+```
 
-2. Install dependencies:
-   ```bash
-   pip install -r requirements.txt
-   ```
+### 2. Install Dependencies
 
-3. Set OpenAI API key:
-   ```bash
-   export OPENAI_API_KEY="your-api-key-here"
-   ```
+```bash
+cd frontend
+npm install
+```
 
-4. Run Flask app:
-   ```bash
-   python app.py
-   ```
+### 3. Set Up ChatGPT API Key
 
-Backend will run on `http://localhost:5000`
+1. Get your OpenAI API key from [OpenAI Platform](https://platform.openai.com/)
+2. Add it to your Netlify environment variables:
+   - Go to your Netlify dashboard
+   - Navigate to Site settings > Environment variables
+   - Add `OPENAI_API_KEY` with your actual API key
 
-### Frontend Setup (Netlify)
+### 4. Run Locally
 
-1. Navigate to frontend directory:
-   ```bash
-   cd frontend
-   ```
+```bash
+npm start
+```
 
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
+Open [http://localhost:3000](http://localhost:3000) to view it in the browser.
 
-3. Update API endpoint in `src/config.js` to point to your backend
+### 5. Build for Production
 
-4. Build for production:
-   ```bash
-   npm run build
-   ```
+```bash
+npm run build
+```
 
-5. Deploy to Netlify:
-   - Drag `build/` folder to Netlify
-   - Or connect GitHub repository for auto-deployment
+## 🌐 Deployment
+
+### Netlify (Recommended)
+
+1. **Connect to Git**: Connect your GitHub repository to Netlify
+2. **Build Settings**:
+   - Build command: `npm run build`
+   - Publish directory: `build`
+3. **Environment Variables**: Add `OPENAI_API_KEY`
+4. **Deploy**: Your app will automatically deploy on every push
+
+### Manual Deployment
+
+```bash
+npm run build
+netlify deploy --prod --dir=build
+```
 
 ## 🔧 Configuration
 
-### Backend Configuration
+### Environment Variables
 
-- Update `backend/config.py` with your OpenAI API key
-- Modify database path in `backend/database.py` if needed
-- Adjust CORS settings in `backend/app.py` for production
+- `OPENAI_API_KEY`: Your OpenAI API key for ChatGPT integration
+- `REACT_APP_ENVIRONMENT`: Set to 'production' for production builds
 
-### Frontend Configuration
+### Customization
 
-- Update API base URL in `frontend/src/config.js`
-- Modify search categories in `frontend/src/components/SearchBar.jsx`
-- Customize styling in `frontend/src/index.css`
+- **Properties**: Edit `frontend/src/data/properties_enhanced.json`
+- **Styling**: Modify `frontend/tailwind.config.js`
+- **AI Prompts**: Update `frontend/netlify/functions/chatgpt-search.js`
 
-## 📊 API Endpoints
+## 📊 Project Structure
 
-- `GET /api/listings` - Get all property listings
-- `POST /api/search` - Search properties with natural language query
+```
+ai-house-buying-assistant/
+├── frontend/                 # React frontend application
+│   ├── src/
+│   │   ├── components/      # Reusable UI components
+│   │   ├── pages/          # Application pages
+│   │   ├── services/       # Business logic and API calls
+│   │   ├── utils/          # Utility functions
+│   │   └── data/           # Property database
+│   ├── netlify/
+│   │   └── functions/      # Serverless functions
+│   ├── public/             # Static assets
+│   └── package.json        # Dependencies and scripts
+├── database/                # Property data files
+├── docs/                    # Documentation
+└── README.md               # This file
+```
 
-### Search Query Format
+## 🎯 How It Works
+
+### 1. User Input
+Users type natural language queries like:
+- "affordable condos in Halifax under $500,000"
+- "houses with 3+ bedrooms near the ocean"
+- "luxury homes in downtown area"
+
+### 2. AI Processing
+- Query is sent to ChatGPT via Netlify Functions
+- AI analyzes the query and extracts filters
+- Returns structured data with explanations
+
+### 3. Smart Filtering
+- Properties are filtered based on AI-extracted criteria
+- Results are ranked by relevance
+- Fallback to local filtering if AI is unavailable
+
+### 4. Results Display
+- Filtered properties are displayed with AI insights
+- Users can see AI's understanding of their query
+- Additional search suggestions are provided
+
+## 🔍 Search Examples
+
+Try these natural language searches:
+
+- **Price-based**: "properties under $300k"
+- **Location-specific**: "homes in Bedford suburbs"
+- **Feature-focused**: "waterfront properties with ocean views"
+- **Category-based**: "luxury condos in downtown Halifax"
+- **Investment**: "properties with rental income potential"
+- **Family-friendly**: "homes near good schools"
+
+## 🎨 Customization
+
+### Adding New Properties
+
+Edit `frontend/src/data/properties_enhanced.json`:
 
 ```json
 {
-  "query": "affordable condos in Halifax under $500,000"
+  "id": 21,
+  "title": "Your Property Title",
+  "type": "house",
+  "price": 500000,
+  "location": "Halifax",
+  "bedrooms": 3,
+  "bathrooms": 2,
+  "features": ["modern", "family_friendly"],
+  "category": "family"
 }
 ```
 
-### Response Format
+### Modifying AI Prompts
 
-```json
-{
-  "results": [
-    {
-      "id": 1,
-      "title": "Modern Downtown Condo",
-      "description": "Beautiful 2-bedroom condo in the heart of Halifax",
-      "type": "condo",
-      "price": 450000,
-      "location": "Halifax, NS",
-      "image_url": "https://example.com/image.jpg",
-      "bedrooms": 2,
-      "bathrooms": 2,
-      "sqft": 1200
-    }
-  ],
-  "total": 1,
-  "filters_applied": {
-    "type": "condo",
-    "location": "Halifax",
-    "max_price": 500000
-  }
-}
-```
+Update the system prompt in `frontend/netlify/functions/chatgpt-search.js` to change how ChatGPT interprets queries.
 
-## 🎯 AI Filtering Examples
+## 🚧 Development
 
-- "Show me affordable condos in Halifax under $500,000"
-- "Find houses near the ocean"
-- "Cheap land near Bedford"
-- "Luxury homes in downtown area"
-- "Properties with 3+ bedrooms under $800,000"
+### Available Scripts
 
-## 🚀 Deployment
+- `npm start` - Start development server
+- `npm run build` - Build for production
+- `npm test` - Run tests
+- `npm run eject` - Eject from Create React App
 
-### Backend (JupyterHub)
+### Code Style
 
-1. Upload backend files to JupyterHub
-2. Install requirements: `pip install -r requirements.txt`
-3. Set environment variables
-4. Run: `python app.py`
-
-### Frontend (Netlify)
-
-1. Connect GitHub repository or upload build files
-2. Set build command: `npm run build`
-3. Set publish directory: `build`
-4. Deploy!
-
-## 🔒 Environment Variables
-
-### Backend
-- `OPENAI_API_KEY`: Your OpenAI API key
-- `FLASK_ENV`: Set to 'production' for production deployment
-
-### Frontend
-- `REACT_APP_API_URL`: Backend API URL
-
-## 📱 Features
-
-- **Responsive Design**: Works on all devices
-- **Real-time Search**: Instant results as you type
-- **Advanced Filtering**: AI-powered query interpretation
-- **Property Cards**: Beautiful listing displays
-- **Category Navigation**: Easy browsing by property type
-- **Search History**: Local storage for recent searches
+- ESLint configuration included
+- Prettier formatting
+- Component-based architecture
+- Service layer for business logic
 
 ## 🤝 Contributing
 
 1. Fork the repository
-2. Create feature branch
-3. Commit changes
-4. Push to branch
-5. Create Pull Request
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit your changes (`git commit -m 'Add amazing feature'`)
+4. Push to the branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
 
-## 📄 License
+## 📝 License
 
-MIT License - see LICENSE file for details
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
 
-## 🆘 Support
+## 🙏 Acknowledgments
 
-For issues and questions:
-1. Check existing issues
-2. Create new issue with detailed description
-3. Include error logs and steps to reproduce
+- OpenAI for ChatGPT API
+- Netlify for hosting and serverless functions
+- React and TailwindCSS communities
+- Unsplash for property images
+
+## 📞 Support
+
+If you have any questions or need help:
+
+- **GitHub Issues**: [Create an issue](https://github.com/TushantKaura1/ai-house-buying-assistant/issues)
+- **Email**: [Your email here]
+- **Documentation**: Check the docs folder for detailed guides
+
+## 🔮 Future Enhancements
+
+- [ ] User accounts and favorites
+- [ ] Advanced filtering options
+- [ ] Property comparison tools
+- [ ] Map integration
+- [ ] Virtual tours
+- [ ] Mortgage calculator
+- [ ] Market analytics
+- [ ] Multi-language support
 
 ---
 
-**Built with ❤️ using React, Flask, and OpenAI GPT**
+**Built with ❤️ by Tushant Kaura**
+
+*Making house hunting intelligent and effortless*

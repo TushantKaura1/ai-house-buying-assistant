@@ -1,262 +1,215 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { apiService, storage } from '../services/api';
 import config from '../config';
 
-const SearchBar = ({ onSearch, className = '', showSuggestions = true }) => {
+const SearchBar = ({ onSearch, placeholder, suggestions = [], className = '' }) => {
   const [query, setQuery] = useState('');
-  const [suggestions, setSuggestions] = useState([]);
-  const [isLoading, setIsLoading] = useState(false);
-  const [showSuggestionsList, setShowSuggestionsList] = useState(false);
-  const [recentSearches, setRecentSearches] = useState([]);
-  const [filters, setFilters] = useState({});
-  
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [filteredSuggestions, setFilteredSuggestions] = useState([]);
+  const [selectedIndex, setSelectedIndex] = useState(-1);
+  const [isSearching, setIsSearching] = useState(false);
+  const searchRef = useRef(null);
   const navigate = useNavigate();
-  const searchInputRef = useRef(null);
-  const suggestionsRef = useRef(null);
 
-  // Load recent searches from localStorage
+  // Default placeholder if none provided
+  const defaultPlaceholder = placeholder || "Describe your dream property...";
+
+  // Filter suggestions based on current query
   useEffect(() => {
-    const saved = storage.get(config.storage.recentSearches) || [];
-    setRecentSearches(saved);
-  }, []);
-
-  // Handle clicks outside suggestions
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (suggestionsRef.current && !suggestionsRef.current.contains(event.target)) {
-        setShowSuggestionsList(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
-
-  // Debounced search suggestions
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (query.trim() && query.length > 2) {
-        generateSuggestions(query);
-      } else {
-        setSuggestions([]);
-      }
-    }, config.app.searchDebounceMs);
-
-    return () => clearTimeout(timer);
-  }, [query]);
-
-  const generateSuggestions = async (searchQuery) => {
-    try {
-      // Get AI-powered suggestions from backend
-      const response = await apiService.searchListings(searchQuery);
-      if (response.success && response.data.suggestions) {
-        setSuggestions(response.data.suggestions);
-      } else {
-        // Fallback to default suggestions
-        setSuggestions(config.defaultSuggestions.filter(s => 
-          s.toLowerCase().includes(searchQuery.toLowerCase())
-        ));
-      }
-    } catch (error) {
-      console.error('Error generating suggestions:', error);
-      // Fallback to default suggestions
-      setSuggestions(config.defaultSuggestions.filter(s => 
-        s.toLowerCase().includes(searchQuery.toLowerCase())
-      ));
+    if (query.trim() === '') {
+      setFilteredSuggestions(suggestions.slice(0, 8));
+    } else {
+      const filtered = suggestions.filter(suggestion =>
+        suggestion.toLowerCase().includes(query.toLowerCase())
+      );
+      setFilteredSuggestions(filtered.slice(0, 6));
     }
-  };
+    setSelectedIndex(-1);
+  }, [query, suggestions]);
 
-  const handleSearch = async (searchQuery = query) => {
-    if (!searchQuery.trim()) return;
-
-    setIsLoading(true);
-    setShowSuggestionsList(false);
-
-    try {
-      // Save to recent searches
-      const updatedSearches = [
-        searchQuery,
-        ...recentSearches.filter(s => s !== searchQuery)
-      ].slice(0, 10);
-      
-      storage.set(config.storage.recentSearches, updatedSearches);
-      setRecentSearches(updatedSearches);
-
-      // Navigate to search results page
-      navigate('/search', { 
-        state: { 
-          query: searchQuery,
-          filters: filters
-        }
-      });
-
-      // Call onSearch callback if provided
-      if (onSearch) {
-        onSearch(searchQuery, filters);
-      }
-    } catch (error) {
-      console.error('Search error:', error);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
+  // Handle suggestion click
   const handleSuggestionClick = (suggestion) => {
     setQuery(suggestion);
+    setShowSuggestions(false);
     handleSearch(suggestion);
   };
 
-  const handleRecentSearchClick = (recentSearch) => {
-    setQuery(recentSearch);
-    handleSearch(recentSearch);
+  // Handle search submission
+  const handleSearch = (searchQuery = query) => {
+    if (!searchQuery.trim()) return;
+
+    setIsSearching(true);
+    setShowSuggestions(false);
+
+    // If onSearch callback is provided, use it
+    if (onSearch) {
+      onSearch(searchQuery);
+    } else {
+      // Default navigation behavior
+      navigate(`/search?q=${encodeURIComponent(searchQuery)}`);
+    }
+
+    // Reset state
+    setTimeout(() => setIsSearching(false), 1000);
   };
 
-  const handleKeyPress = (e) => {
-    if (e.key === 'Enter') {
-      handleSearch();
+  // Handle keyboard navigation
+  const handleKeyDown = (e) => {
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setSelectedIndex(prev => 
+        prev < filteredSuggestions.length - 1 ? prev + 1 : prev
+      );
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setSelectedIndex(prev => prev > 0 ? prev - 1 : -1);
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      if (selectedIndex >= 0 && filteredSuggestions[selectedIndex]) {
+        handleSuggestionClick(filteredSuggestions[selectedIndex]);
+      } else {
+        handleSearch();
+      }
     } else if (e.key === 'Escape') {
-      setShowSuggestionsList(false);
+      setShowSuggestions(false);
+      setSelectedIndex(-1);
     }
   };
 
-  const handleInputFocus = () => {
-    if (query.trim() || recentSearches.length > 0) {
-      setShowSuggestionsList(true);
-    }
+  // Handle input focus
+  const handleFocus = () => {
+    setShowSuggestions(true);
   };
 
-  const clearSearch = () => {
-    setQuery('');
-    setSuggestions([]);
-    setShowSuggestionsList(false);
-    searchInputRef.current?.focus();
+  // Handle input blur
+  const handleBlur = () => {
+    // Delay hiding suggestions to allow for clicks
+    setTimeout(() => setShowSuggestions(false), 200);
   };
+
+  // Handle input change
+  const handleInputChange = (e) => {
+    const value = e.target.value;
+    setQuery(value);
+    setShowSuggestions(true);
+  };
+
+  // Popular search examples
+  const popularSearches = [
+    "affordable condos under $500k",
+    "family homes with 3+ bedrooms",
+    "waterfront properties",
+    "luxury homes in downtown",
+    "investment properties",
+    "retirement homes"
+  ];
 
   return (
-    <div className={`relative ${className}`}>
+    <div className={`relative ${className}`} ref={searchRef}>
       {/* Main Search Input */}
-      <div className="search-bar">
-        <div className="flex items-center space-x-4">
-          {/* Search Icon */}
-          <div className="text-realtor-500">
-            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-            </svg>
-          </div>
-
-          {/* Search Input */}
-          <div className="flex-1">
-            <input
-              ref={searchInputRef}
-              type="text"
-              value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              onFocus={handleInputFocus}
-              onKeyPress={handleKeyPress}
-              placeholder="Try: 'affordable condos in Halifax under $500,000'"
-              className="input-field text-lg border-0 focus:ring-0 focus:border-0 shadow-none"
-              disabled={isLoading}
-            />
-          </div>
-
-          {/* Clear Button */}
-          {query && (
-            <button
-              onClick={clearSearch}
-              className="text-gray-400 hover:text-gray-600 transition-colors duration-200"
-              aria-label="Clear search"
-            >
-              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-              </svg>
-            </button>
+      <div className="relative">
+        <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
+          <svg className="h-6 w-6 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+          </svg>
+        </div>
+        
+        <input
+          type="text"
+          value={query}
+          onChange={handleInputChange}
+          onFocus={handleFocus}
+          onBlur={handleBlur}
+          onKeyDown={handleKeyDown}
+          placeholder={defaultPlaceholder}
+          className="w-full pl-12 pr-20 py-4 text-lg border-2 border-gray-200 rounded-xl focus:border-blue-500 focus:ring-4 focus:ring-blue-100 transition-all duration-200 placeholder-gray-400"
+        />
+        
+        <button
+          onClick={() => handleSearch()}
+          disabled={isSearching || !query.trim()}
+          className="absolute inset-y-0 right-0 px-6 bg-blue-600 text-white font-semibold rounded-r-xl hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed transition-colors duration-200"
+        >
+          {isSearching ? (
+            <div className="flex items-center">
+              <div className="animate-spin rounded-full h-5 w-5 border-b-2 border-white mr-2"></div>
+              Search
+            </div>
+          ) : (
+            'Search'
           )}
-
-          {/* Search Button */}
-          <button
-            onClick={() => handleSearch()}
-            disabled={!query.trim() || isLoading}
-            className="btn-primary px-8 py-3 text-lg disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {isLoading ? (
-              <div className="loading-spinner"></div>
-            ) : (
-              'Search'
-            )}
-          </button>
-        </div>
-
-        {/* AI Search Hint */}
-        <div className="mt-4 text-center">
-          <p className="text-sm text-gray-600">
-            💡 <strong>AI-Powered:</strong> Use natural language to find your dream property
-          </p>
-        </div>
+        </button>
       </div>
 
-      {/* Suggestions Dropdown */}
-      {showSuggestionsList && showSuggestions && (
-        <div
-          ref={suggestionsRef}
-          className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-gray-200 z-50 max-h-96 overflow-y-auto"
-        >
-          {/* Recent Searches */}
-          {recentSearches.length > 0 && (
-            <div className="p-4 border-b border-gray-100">
-              <h3 className="text-sm font-medium text-gray-700 mb-2">Recent Searches</h3>
-              <div className="space-y-2">
-                {recentSearches.slice(0, 5).map((recentSearch, index) => (
-                  <button
-                    key={index}
-                    onClick={() => handleRecentSearchClick(recentSearch)}
-                    className="w-full text-left px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded-lg transition-colors duration-200 flex items-center space-x-2"
-                  >
-                    <svg className="w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-                    </svg>
-                    <span>{recentSearch}</span>
-                  </button>
-                ))}
+      {/* Search Suggestions Dropdown */}
+      {showSuggestions && (
+        <div className="absolute top-full left-0 right-0 mt-2 bg-white border border-gray-200 rounded-xl shadow-xl z-50 max-h-96 overflow-y-auto">
+          {/* Filtered Suggestions */}
+          {filteredSuggestions.length > 0 && (
+            <div className="p-2">
+              <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide px-3 py-2">
+                Suggested Searches
               </div>
-            </div>
-          )}
-
-          {/* AI Suggestions */}
-          {suggestions.length > 0 && (
-            <div className="p-4">
-              <h3 className="text-sm font-medium text-gray-700 mb-2">💡 AI Suggestions</h3>
-              <div className="space-y-2">
-                {suggestions.map((suggestion, index) => (
-                  <button
-                    key={index}
-                    onClick={() => handleSuggestionClick(suggestion)}
-                    className="w-full text-left px-3 py-2 text-sm text-gray-600 hover:bg-gray-50 rounded-lg transition-colors duration-200 flex items-center space-x-2"
-                  >
-                    <svg className="w-4 h-4 text-realtor-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
-                    </svg>
-                    <span>{suggestion}</span>
-                  </button>
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* Quick Filters */}
-          <div className="p-4 border-t border-gray-100">
-            <h3 className="text-sm font-medium text-gray-700 mb-2">Quick Filters</h3>
-            <div className="grid grid-cols-2 gap-2">
-              {config.propertyTypes.slice(1).map((type) => (
+              {filteredSuggestions.map((suggestion, index) => (
                 <button
-                  key={type.id}
-                  onClick={() => handleSearch(`${type.label.toLowerCase()} in Halifax`)}
-                  className="px-3 py-2 text-xs bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg transition-colors duration-200"
+                  key={index}
+                  onClick={() => handleSuggestionClick(suggestion)}
+                  className={`w-full text-left px-3 py-3 rounded-lg hover:bg-blue-50 transition-colors ${
+                    index === selectedIndex ? 'bg-blue-100 text-blue-700' : 'text-gray-700'
+                  }`}
                 >
-                  {type.icon} {type.label}
+                  <div className="flex items-center">
+                    <svg className="h-4 w-4 text-gray-400 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                    </svg>
+                    <span className="text-sm">{suggestion}</span>
+                  </div>
                 </button>
               ))}
             </div>
+          )}
+
+          {/* Popular Searches */}
+          <div className="border-t border-gray-100 p-2">
+            <div className="text-xs font-semibold text-gray-500 uppercase tracking-wide px-3 py-2">
+              Popular Searches
+            </div>
+            <div className="flex flex-wrap gap-2 px-3 pb-2">
+              {popularSearches.map((search, index) => (
+                <button
+                  key={index}
+                  onClick={() => handleSuggestionClick(search)}
+                  className="px-3 py-1 text-xs bg-gray-100 text-gray-700 rounded-full hover:bg-blue-100 hover:text-blue-700 transition-colors"
+                >
+                  {search}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {/* Search Tips */}
+          <div className="border-t border-gray-100 p-3 bg-gray-50 rounded-b-xl">
+            <div className="text-xs text-gray-600">
+              <strong>💡 Tip:</strong> Use natural language like "affordable condos in Halifax under $500,000" or "houses with ocean views"
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Search Examples */}
+      {!showSuggestions && query === '' && (
+        <div className="mt-4 text-center">
+          <div className="text-sm text-gray-500 mb-2">Try these examples:</div>
+          <div className="flex flex-wrap gap-2 justify-center">
+            {suggestions.slice(0, 4).map((suggestion, index) => (
+              <button
+                key={index}
+                onClick={() => handleSuggestionClick(suggestion)}
+                className="px-3 py-1 text-xs bg-blue-50 text-blue-700 rounded-full hover:bg-blue-100 transition-colors"
+              >
+                {suggestion}
+              </button>
+            ))}
           </div>
         </div>
       )}
