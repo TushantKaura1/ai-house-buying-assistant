@@ -31,16 +31,22 @@ exports.handler = async (event, context) => {
 
   try {
     // Check if API key is configured
-    if (!OPENAI_API_KEY || OPENAI_API_KEY === 'your_openai_api_key_here') {
+    if (!OPENAI_API_KEY) {
+      console.error('OPENAI_API_KEY is not set');
       return {
         statusCode: 500,
         headers,
         body: JSON.stringify({ 
-          error: 'ChatGPT API key not configured. Please add OPENAI_API_KEY to your Netlify environment variables.',
-          message: 'Contact your administrator to configure the API key.'
+          error: 'ChatGPT API key not configured',
+          message: 'Please add OPENAI_API_KEY to your Netlify environment variables.',
+          debug: 'Environment variable is missing'
         })
       };
     }
+
+    // Log API key status (without exposing the actual key)
+    console.log('API Key Status:', OPENAI_API_KEY ? 'Present' : 'Missing');
+    console.log('API Key Length:', OPENAI_API_KEY ? OPENAI_API_KEY.length : 0);
 
     // Parse the request body
     const { query, properties } = JSON.parse(event.body);
@@ -52,6 +58,8 @@ exports.handler = async (event, context) => {
         body: JSON.stringify({ error: 'Query is required' })
       };
     }
+
+    console.log('Processing query:', query);
 
     // Create the prompt for ChatGPT
     const systemPrompt = `You are an AI real estate assistant. Analyze the user's query and return a JSON response with the following structure:
@@ -79,6 +87,8 @@ Available features: ocean_view, waterfront, downtown, modern, luxury, family_fri
 
 Return only valid JSON, no additional text.`;
 
+    console.log('Calling OpenAI API...');
+
     // Call ChatGPT API
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -97,6 +107,8 @@ Return only valid JSON, no additional text.`;
       })
     });
 
+    console.log('OpenAI API Response Status:', response.status);
+
     if (!response.ok) {
       const errorData = await response.json();
       console.error('OpenAI API Error:', errorData);
@@ -105,13 +117,16 @@ Return only valid JSON, no additional text.`;
         headers,
         body: JSON.stringify({ 
           error: 'ChatGPT API error', 
-          details: errorData.error?.message || 'Unknown error'
+          details: errorData.error?.message || 'Unknown error',
+          status: response.status
         })
       };
     }
 
     const data = await response.json();
     const chatGPTResponse = data.choices[0]?.message?.content;
+
+    console.log('ChatGPT Response:', chatGPTResponse);
 
     if (!chatGPTResponse) {
       return {
@@ -125,14 +140,17 @@ Return only valid JSON, no additional text.`;
     let parsedResponse;
     try {
       parsedResponse = JSON.parse(chatGPTResponse);
+      console.log('Parsed Response:', parsedResponse);
     } catch (parseError) {
       console.error('Failed to parse ChatGPT response:', parseError);
+      console.error('Raw response:', chatGPTResponse);
       return {
         statusCode: 500,
         headers,
         body: JSON.stringify({ 
           error: 'Failed to parse ChatGPT response',
-          rawResponse: chatGPTResponse
+          rawResponse: chatGPTResponse,
+          parseError: parseError.message
         })
       };
     }
@@ -145,7 +163,8 @@ Return only valid JSON, no additional text.`;
         success: true,
         data: parsedResponse,
         query: query,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        source: 'chatgpt'
       })
     };
 
@@ -156,7 +175,8 @@ Return only valid JSON, no additional text.`;
       headers,
       body: JSON.stringify({ 
         error: 'Internal server error',
-        message: error.message
+        message: error.message,
+        stack: error.stack
       })
     };
   }
