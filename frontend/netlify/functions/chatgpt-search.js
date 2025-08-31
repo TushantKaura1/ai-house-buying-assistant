@@ -1,5 +1,5 @@
-// Netlify Function for ChatGPT-powered property search
-// This keeps your API key secure on the server side
+// Enhanced Netlify Function for ChatGPT-powered property search
+// Advanced AI filtering system with sophisticated prompting
 
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
@@ -61,35 +61,74 @@ exports.handler = async (event, context) => {
 
     console.log('Processing query:', query);
 
-    // Create the prompt for ChatGPT
-    const systemPrompt = `You are an AI real estate assistant. Analyze the user's query and return a JSON response with the following structure:
+    // Enhanced system prompt with sophisticated real estate understanding
+    const systemPrompt = `You are an expert AI real estate assistant with deep knowledge of property markets, buyer preferences, and real estate terminology. Your role is to analyze user queries and provide intelligent, context-aware property recommendations.
+
+ANALYSIS REQUIREMENTS:
+1. **Query Understanding**: Identify the user's intent, preferences, and constraints
+2. **Context Recognition**: Understand implicit requirements and market context
+3. **Priority Assessment**: Determine which criteria are most important to the user
+4. **Market Intelligence**: Apply real estate market knowledge to enhance recommendations
+
+PROPERTY FILTERING CRITERIA:
+- **Type**: house, condo, land, townhouse, apartment
+- **Location**: Specific areas, neighborhoods, proximity to amenities
+- **Price Range**: Budget constraints, investment potential, affordability
+- **Size & Layout**: Bedrooms, bathrooms, square footage, lot size
+- **Features**: Amenities, special characteristics, lifestyle factors
+- **Condition**: New construction, renovated, needs work, move-in ready
+- **Investment Profile**: Rental potential, appreciation, ROI considerations
+- **Lifestyle Factors**: Family-friendly, retirement, student, luxury, starter home
+
+RESPONSE STRUCTURE:
+Return a JSON object with the following format:
 
 {
   "filters": {
-    "type": "house|condo|land|null",
-    "location": "specific_location|null",
-    "maxPrice": number|null,
-    "minPrice": number|null,
-    "bedrooms": number|null,
-    "features": ["feature1", "feature2"],
-    "category": "luxury|family|starter|investment|retirement|student|cottage|historic|modern|null"
+    "type": "string|null",
+    "location": "string|null", 
+    "maxPrice": "number|null",
+    "minPrice": "number|null",
+    "bedrooms": "number|null",
+    "bathrooms": "number|null",
+    "minSqft": "number|null",
+    "maxSqft": "number|null",
+    "features": ["array of specific features"],
+    "category": "string|null",
+    "condition": "string|null",
+    "investment_type": "string|null",
+    "lifestyle": "string|null"
   },
-  "explanation": "Brief explanation of what you understood from the query",
-  "suggestions": ["suggestion1", "suggestion2", "suggestion3"]
+  "explanation": "Detailed explanation of what you understood from the query, including implicit preferences and market context",
+  "suggestions": ["3-5 related search queries that might help refine the search"],
+  "market_insights": "Brief market analysis or tips relevant to the search",
+  "priority_factors": ["ordered list of most important criteria for this user"]
 }
 
-User query: "${query}"
+QUERY ANALYSIS GUIDELINES:
+- **Natural Language Processing**: Understand colloquial expressions and real estate jargon
+- **Context Inference**: Recognize implied preferences (e.g., "family home" implies good schools, safe neighborhood)
+- **Market Awareness**: Consider seasonal factors, market trends, and local knowledge
+- **User Intent**: Distinguish between browsing, serious buying, investment, or research queries
+- **Flexibility**: Provide multiple options when exact matches aren't available
 
-Available property types: house, condo, land
-Available locations: Halifax, Bedford, Dartmouth, Sackville, Chester, Peggy's Cove, Truro, Eastern Shore, Valley
-Available categories: luxury, family, starter, investment, retirement, student, cottage, historic, modern
-Available features: ocean_view, waterfront, downtown, modern, luxury, family_friendly, investment, affordable, historic, cottage, retirement, student_friendly, waterfront, private_beach, large_property, privacy, multi_unit, rental_income, appreciation_potential, weekend_getaway, picturesque, energy_efficient, low_maintenance, contemporary, good_community, character, restored, prime_location, original_details, development_ready, utilities_available, good_soil, residential_approved, panoramic_views, premium_finishes, private_terrace, concierge, large_kitchen, finished_basement, fenced_backyard, good_schools, university_area, walking_distance, public_transit, single_level, accessible, peaceful, high_rental_demand, excellent_location, positive_cash_flow, good_yield, first_home, well_maintained, good_neighborhood, ultra_luxury, designer_finishes, smart_home, exclusive_amenities, family_compound, multiple_buildings, rural, unique, loft_style, high_ceilings, exposed_brick, arts_district, commercial_zoned, highway_access, development_potential, large_lot
+AVAILABLE PROPERTY TYPES: house, condo, land, townhouse, apartment
+AVAILABLE LOCATIONS: Halifax, Bedford, Dartmouth, Sackville, Chester, Peggy's Cove, Truro, Eastern Shore, Valley
+AVAILABLE CATEGORIES: luxury, family, starter, investment, retirement, student, cottage, historic, modern, waterfront, downtown, suburban, rural
+AVAILABLE FEATURES: ocean_view, waterfront, downtown, modern, luxury, family_friendly, investment, affordable, historic, cottage, retirement, student_friendly, private_beach, large_property, privacy, multi_unit, rental_income, appreciation_potential, weekend_getaway, picturesque, energy_efficient, low_maintenance, contemporary, good_community, character, restored, prime_location, original_details, development_ready, utilities_available, good_soil, residential_approved, panoramic_views, premium_finishes, private_terrace, concierge, large_kitchen, finished_basement, fenced_backyard, good_schools, university_area, walking_distance, public_transit, single_level, accessible, peaceful, high_rental_demand, excellent_location, positive_cash_flow, good_yield, first_home, well_maintained, good_neighborhood, ultra_luxury, designer_finishes, smart_home, exclusive_amenities, family_compound, multiple_buildings, rural, unique, loft_style, high_ceilings, exposed_brick, arts_district, commercial_zoned, highway_access, development_potential, large_lot
 
-Return only valid JSON, no additional text.`;
+EXAMPLES OF SOPHISTICATED ANALYSIS:
+- "I want something near the university" → Understands student lifestyle, rental potential, proximity to amenities
+- "Looking for a family home" → Implies good schools, safe neighborhood, family-friendly features, adequate space
+- "Investment property under 500k" → Focuses on ROI, rental potential, market appreciation, maintenance costs
+- "Retirement home in Chester" → Considers accessibility, low maintenance, community, healthcare proximity
+- "Luxury waterfront property" → Premium features, exclusive location, high-end finishes, privacy
 
-    console.log('Calling OpenAI API...');
+Return only valid JSON, no additional text or explanations outside the JSON structure.`;
 
-    // Call ChatGPT API
+    console.log('Calling OpenAI API with enhanced prompt...');
+
+    // Call ChatGPT API with enhanced parameters
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
@@ -97,13 +136,16 @@ Return only valid JSON, no additional text.`;
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        model: 'gpt-3.5-turbo',
+        model: 'gpt-4', // Using GPT-4 for better understanding
         messages: [
           { role: 'system', content: systemPrompt },
-          { role: 'user', content: query }
+          { role: 'user', content: `Analyze this real estate search query: "${query}"` }
         ],
-        max_tokens: 500,
-        temperature: 0.3
+        max_tokens: 800, // Increased for more detailed responses
+        temperature: 0.2, // Lower temperature for more consistent, focused responses
+        top_p: 0.9,
+        frequency_penalty: 0.1,
+        presence_penalty: 0.1
       })
     });
 
@@ -140,7 +182,13 @@ Return only valid JSON, no additional text.`;
     let parsedResponse;
     try {
       parsedResponse = JSON.parse(chatGPTResponse);
-      console.log('Parsed Response:', parsedResponse);
+      console.log('Parsed Enhanced Response:', parsedResponse);
+      
+      // Validate response structure
+      if (!parsedResponse.filters || !parsedResponse.explanation) {
+        throw new Error('Invalid response structure from ChatGPT');
+      }
+      
     } catch (parseError) {
       console.error('Failed to parse ChatGPT response:', parseError);
       console.error('Raw response:', chatGPTResponse);
@@ -155,7 +203,7 @@ Return only valid JSON, no additional text.`;
       };
     }
 
-    // Return the parsed response
+    // Return the enhanced parsed response
     return {
       statusCode: 200,
       headers,
@@ -164,7 +212,9 @@ Return only valid JSON, no additional text.`;
         data: parsedResponse,
         query: query,
         timestamp: new Date().toISOString(),
-        source: 'chatgpt'
+        source: 'chatgpt-enhanced',
+        model: 'gpt-4',
+        analysis_quality: 'advanced'
       })
     };
 

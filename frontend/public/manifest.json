@@ -1,0 +1,16 @@
+{
+  "short_name": "AI House Assistant",
+  "name": "AI House Buying Assistant",
+  "description": "An intelligent real estate search platform powered by ChatGPT",
+  "icons": [
+    {
+      "src": "favicon.ico",
+      "sizes": "64x64 32x32 24x24 16x16",
+      "type": "image/x-icon"
+    }
+  ],
+  "start_url": ".",
+  "display": "standalone",
+  "theme_color": "#000000",
+  "background_color": "#ffffff"
+}

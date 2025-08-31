@@ -127,6 +127,29 @@ export const formatPropertyTax = (tax) => {
 };
 
 /**
+ * Format bedrooms
+ * @param {number} bedrooms - Number of bedrooms
+ * @returns {string} Formatted bedrooms string
+ */
+export const formatBedrooms = (bedrooms) => {
+  if (!bedrooms && bedrooms !== 0) return 'Studio';
+  if (bedrooms === 1) return '1 bedroom';
+  return `${bedrooms} bedrooms`;
+};
+
+/**
+ * Format bathrooms
+ * @param {number} bathrooms - Number of bathrooms
+ * @returns {string} Formatted bathrooms string
+ */
+export const formatBathrooms = (bathrooms) => {
+  if (!bathrooms && bathrooms !== 0) return 'N/A';
+  if (bathrooms === 1) return '1 bathroom';
+  if (bathrooms % 1 === 0) return `${bathrooms} bathrooms`;
+  return `${bathrooms} bathrooms`;
+};
+
+/**
  * Truncate text to specified length
  * @param {string} text - Text to truncate
  * @param {number} maxLength - Maximum length
@@ -148,4 +171,52 @@ export const capitalizeWords = (text) => {
   return text.split(' ').map(word => 
     word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
   ).join(' ');
+};
+
+/**
+ * Get property type icon
+ * @param {string} type - Property type
+ * @returns {string} Icon emoji
+ */
+export const getPropertyTypeIcon = (type) => {
+  const typeConfig = {
+    'house': '🏠',
+    'condo': '🏢',
+    'land': '🌱',
+    'townhouse': '🏡',
+    'apartment': '🏢'
+  };
+  return typeConfig[type] || '🏘️';
+};
+
+/**
+ * Get property type label
+ * @param {string} type - Property type
+ * @returns {string} Formatted property type label
+ */
+export const getPropertyTypeLabel = (type) => {
+  const typeConfig = {
+    'house': 'House',
+    'condo': 'Condo',
+    'land': 'Land',
+    'townhouse': 'Townhouse',
+    'apartment': 'Apartment'
+  };
+  return typeConfig[type] || 'Property';
+};
+
+/**
+ * Get property type color
+ * @param {string} type - Property type
+ * @returns {string} Color class
+ */
+export const getPropertyTypeColor = (type) => {
+  const typeConfig = {
+    'house': 'blue',
+    'condo': 'green',
+    'land': 'yellow',
+    'townhouse': 'purple',
+    'apartment': 'indigo'
+  };
+  return typeConfig[type] || 'gray';
 };

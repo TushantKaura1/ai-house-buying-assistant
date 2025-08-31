@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
-import { apiService, formatPrice, formatLocation, getPropertyTypeIcon, getPropertyTypeLabel } from '../services/api';
+import { formatPrice, formatLocation, getPropertyTypeIcon, getPropertyTypeLabel } from '../utils/formatters';
+import smartFilterService from '../services/smartFilter';
 
 const ListingDetailPage = () => {
   const { id } = useParams();
@@ -19,10 +20,10 @@ const ListingDetailPage = () => {
       setIsLoading(true);
       setError(null);
       
-      const response = await apiService.getListingDetails(id);
+      const response = smartFilterService.getPropertyById(id);
       
-      if (response.success) {
-        setListing(response.data);
+      if (response) {
+        setListing(response);
       } else {
         setError('Listing not found');
       }

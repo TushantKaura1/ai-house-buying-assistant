@@ -1,26 +1,32 @@
-// Smart Filtering Service for AI Realtor Assistant
-// This service integrates with ChatGPT API through Netlify Functions for intelligent property search
+// Smart Filter Service for AI House Buying Assistant
+// Handles intelligent property filtering and ChatGPT integration
 
 import propertiesData from '../data/properties_enhanced.json';
 
 class SmartFilterService {
   constructor() {
-    this.properties = propertiesData.properties;
-    this.categories = propertiesData.categories;
-    this.searchSuggestions = propertiesData.search_suggestions;
-    this.useChatGPT = true; // Enable ChatGPT integration
+    this.properties = propertiesData.properties || [];
+    this.categories = propertiesData.categories || {};
+    this.searchSuggestions = propertiesData.search_suggestions || [];
+    this.useChatGPT = true;
+    this.lastChatGPTCall = 0;
+    this.chatGPTCooldown = 2000; // 2 seconds cooldown between calls
+    this.maxRetries = 3;
+    this.retryDelay = 1000; // 1 second delay between retries
   }
 
-  // Main method to process natural language queries
+  // Process natural language query with ChatGPT or fallback to local filtering
   async processQuery(query) {
     const normalizedQuery = query.toLowerCase().trim();
     
-    // Try ChatGPT first if enabled
-    if (this.useChatGPT) {
+    // Check if we can make a ChatGPT call (rate limiting)
+    const now = Date.now();
+    if (this.useChatGPT && (now - this.lastChatGPTCall) > this.chatGPTCooldown) {
       try {
-        const chatGPTResult = await this.queryChatGPT(normalizedQuery);
+        this.lastChatGPTCall = now;
+        const chatGPTResult = await this.queryChatGPTWithRetry(normalizedQuery);
+        
         if (chatGPTResult && chatGPTResult.success) {
-          // Use ChatGPT's intelligent filtering
           const filteredProperties = this.applyChatGPTFilters(chatGPTResult.data.filters);
           const sortedProperties = this.sortByRelevance(filteredProperties, normalizedQuery);
           
@@ -36,7 +42,8 @@ class SmartFilterService {
         }
       } catch (error) {
         console.warn('ChatGPT query failed, falling back to local filtering:', error);
-        // Fall back to local filtering
+        // Don't update lastChatGPTCall on failure to allow retry sooner
+        this.lastChatGPTCall = Math.max(0, this.lastChatGPTCall - this.chatGPTCooldown);
       }
     }
     
@@ -54,28 +61,42 @@ class SmartFilterService {
     };
   }
 
-  // Query ChatGPT through Netlify Function
-  async queryChatGPT(query) {
+  // Query ChatGPT with retry logic and rate limiting
+  async queryChatGPTWithRetry(query, retryCount = 0) {
     try {
       const response = await fetch('/.netlify/functions/chatgpt-search', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          query: query,
-          properties: this.properties.length
-        })
+        body: JSON.stringify({ query, properties: this.properties })
       });
+
+      if (response.status === 429) {
+        // Rate limited - wait and retry
+        if (retryCount < this.maxRetries) {
+          console.log(`Rate limited, retrying in ${this.retryDelay}ms... (attempt ${retryCount + 1})`);
+          await new Promise(resolve => setTimeout(resolve, this.retryDelay * (retryCount + 1)));
+          return this.queryChatGPTWithRetry(query, retryCount + 1);
+        } else {
+          throw new Error('Rate limit exceeded after multiple retries');
+        }
+      }
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
 
-      const result = await response.json();
-      return result;
+      const data = await response.json();
+      return data;
     } catch (error) {
-      console.error('ChatGPT API call failed:', error);
+      if (error.message.includes('429') && retryCount < this.maxRetries) {
+        // Handle 429 errors with exponential backoff
+        const delay = this.retryDelay * Math.pow(2, retryCount);
+        console.log(`Rate limited, retrying in ${delay}ms... (attempt ${retryCount + 1})`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return this.queryChatGPTWithRetry(query, retryCount + 1);
+      }
       throw error;
     }
   }
@@ -441,8 +462,9 @@ class SmartFilterService {
   }
 
   // Toggle ChatGPT integration
-  toggleChatGPT(enabled) {
-    this.useChatGPT = enabled;
+  toggleChatGPT() {
+    this.useChatGPT = !this.useChatGPT;
+    return this.useChatGPT;
   }
 
   // Check if ChatGPT is available
